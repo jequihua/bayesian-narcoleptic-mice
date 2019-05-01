@@ -64,7 +64,7 @@ ba_totaltime$group <- as.factor(ba_totaltime$group)
 ba_totaltime$mouse <- as.factor(ba_totaltime$mouse)
 
 # Fit brms model for total time spent in BA state.
-ba_totaltime_fit <- brm(BA_totaltime ~ group + (group | mouse), 
+ba_totaltime_fit <- brm(BA_totaltime ~ group + (1|mouse), 
                         data = ba_totaltime, family = lognormal(), control = list(adapt_delta = 0.999,max_treedepth = 13))
 
 # Evaluate model fit.
