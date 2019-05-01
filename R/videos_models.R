@@ -50,6 +50,8 @@ summary(ba_seconds_fit)
 pp = brms::pp_check(ba_seconds_fit)
 pp + theme_bw()
 
+?pp_check
+
 brms::marginal_effects(ba_seconds_fit)
 
 # Total time spent in BA state.
