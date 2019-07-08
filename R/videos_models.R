@@ -3,6 +3,13 @@
 library("tidyverse")
 library("ggplot2")
 library("brms")
+library("brmstools")
+library("bayesplot")
+
+devtools::install_github('m-clark/lazerhawk')
+
+# Load misc. functions.
+source("./R/misc_functions.R")
 
 # Load recorded behaviors data.
 data <- read_csv("./data/videos/recorded_behaviors.csv")
@@ -14,78 +21,194 @@ ba_seconds <- filter(data,behavior=="BA")
 ba_seconds$group <- as.factor(ba_seconds$group)
 ba_seconds$mouse <- as.factor(ba_seconds$mouse)
 
+# Which priors can we specify for our model?
+get_prior(seconds ~ group + (1|mouse), data=ba_seconds)
+
 # Fit brms model for duration of each BA attack.
 ba_seconds_fit <- brm(seconds ~ group + (1|mouse), 
                       data = ba_seconds, family = lognormal(), control = list(adapt_delta = 0.999))
 
+# Chart raw data boxplots.
+ggplot(ba_seconds, aes(x=group, y=seconds)) + geom_boxplot(lwd=1.2)+
+labs(x = NULL, y = "Seconds")+
+theme_bw(base_size = 20)
+ 
+ggsave("./images3/1_ba_duration/1_ba_duration_rawdata_boxplots.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+# Summary stats. 
+ba_seconds_grouped = group_by(ba_seconds,group)
+ba_seconds_summary = summarise(ba_seconds_grouped,
+                               n=n(),
+                               n_mouse=n_distinct(mouse),
+                               mean=mean(seconds),
+                               median = median(seconds),
+                               min=min(seconds),
+                               max=max(seconds),
+                               sd=sd(seconds))
+
+write_csv(ba_seconds_summary,"./images3/1_ba_duration/1_ba_duration_rawdata_summary.csv")
+
+# Coefficient plot.
+coeff_plot_data = interval_data(ba_seconds_fit)
+plot_intervals(coeff_plot_data)
+ggsave("./images3/1_ba_duration/2_ba_duration_modelfit_coefficientplot.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+# Summary of model fit.
+fit_summary = lazerhawk::brms_SummaryTable(ba_seconds_fit,astrology=TRUE)
+write_csv(fit_summary,"./images3/1_ba_duration/2_ba_duration_modelfit_fitsummary.csv")
+
+comps = tukeys_mat(ba_seconds,ba_seconds_fit)
+write_csv(comps,"./images3/1_ba_duration/3_ba_duration_modelinference_pairwisecomp_table.csv")
+plot_contrasts(comps)
+ggsave("./images3/1_ba_duration/3_ba_duration_modelinference_pairwisecomp.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+################################### Contrasts between treatments
+fit1 = as.data.frame(fitted(
+  ba_seconds_fit,
+  newdata = data.frame(group = levels(ba_seconds$group)),
+  re_formula = NA,
+  summary = FALSE # extract the full MCMC
+))
+
+colnames(fit1) = unique(ba_seconds$group)
+
+txox_vs_NB = fit1$txox -
+  (
+    fit1$NB
+  )
+
+fit1$NB
+
+(
+  fit1$NB
+)
+
+quantile(txox_vs_NB, probs = c(.5, .025, .975))
+
+txox_vs_rest = fit1$txox -
+  (
+    fit1$NB +
+      fit1$sham +
+      fit1$txcb 
+  ) / 3
+
+quantile(txox_vs_rest, probs = c(.5, .025, .975))
+
+
+
+##################################
+
+
 # Evaluate model fit.
 summary(ba_seconds_fit)
 
-pp <- brms::pp_check(ba_seconds_fit)
+plot(ba_seconds_fit)
+
+p = stanplot(ba_seconds_fit,pars = "^b_")+ theme(text = element_text(size=20),line=element_line(size=20))
+
+forest(ba)
+
+pp <- brms::pp_check(ba_seconds_fit,nsamples=10)
 pp + theme_bw()
+
 
 brms::marginal_effects(ba_seconds_fit)
 
-# Total time spent in BA state.
-ba_totaltime <- filter(data,behavior=="BA") %>%
-                mutate(mouse=paste0(group," ",mouse)) %>%
-                group_by(mouse) %>%
-                summarise(BA_totaltime = sum(seconds)) %>%
-                separate(mouse,c("group","mouse"))
-
-# Change variable types.
-ba_totaltime$group <- as.factor(ba_totaltime$group)
-ba_totaltime$mouse <- as.factor(ba_totaltime$mouse)
-
-# Fit brms model for total time spent in BA state.
-ba_totaltime_fit <- brm(BA_totaltime ~ group + (1|mouse), 
-                        data = ba_totaltime, family = lognormal(), control = list(adapt_delta = 0.999,max_treedepth = 13))
-
-# Evaluate model fit.
-summary(ba_totaltime_fit)
-
-plot(ba_totaltime_fit)
-
-pp <- brms::pp_check(ba_totaltime_fit)
-pp + theme_bw()
-
-brms::marginal_effects(ba_totaltime_fit)
-
 ### Total number of BA (narcoleptic attacks) cases model per hour.
+
+# Poisson regression offset log(time)
 
 # Table available number of hours-data per mice.
 mice_totalhours <- group_by(data,mouse) %>%
-  summarise(totaltime = sum(seconds)/3600)
+                   summarise(totaltime = sum(seconds)/3600)
 
 # Join data and mice_hours.
 dataa <- right_join(data,mice_totalhours,by="mouse")
+
 
 ba_counts <- dataa %>% 
              mutate(mouse=paste0(group," ",mouse)) %>%
              group_by(mouse) %>%
              summarise(BA_counts = sum(behavior == "BA"),hours=min(totaltime)) %>%
-             mutate(BA_counts_hour=BA_counts/hours) %>%
              separate(mouse,c("group","mouse"))
 
 # Change variable types.
 ba_counts$group <- as.factor(ba_counts$group)
 ba_counts$mouse <- as.factor(ba_counts$mouse)
 
+# Which priors can we specify for our model?
+get_prior(BA_counts ~ group + (1|mouse)+offset(log(hours)), data=ba_counts)
+
 # Fit brms model for absolute number of BA attacks per hour.            
-ba_counts_fit <- brm(BA_counts_hour ~ group + (1|mouse), 
-                     data = ba_counts, family = lognormal(), control = list(adapt_delta = 0.9999,max_treedepth=15))
+ba_counts_fit <- brm(BA_counts ~ group + (1|mouse)+offset(log(hours)), 
+                     data = ba_counts, family = poisson(), control = list(adapt_delta = 0.9999,max_treedepth=15))
+
+
+# Chart raw data boxplots.
+ggplot(ba_counts, aes(x=group, y=BA_counts)) + geom_boxplot(lwd=1.2)+
+  labs(x = NULL, y = "counts")+
+  theme_bw(base_size = 20)
+
+ggsave("./images3/2_ba_counts/1_ba_counts_rawdata_boxplots.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+# Summary stats. 
+ba_counts_grouped = group_by(ba_counts,group)
+ba_counts_summary = summarise(ba_counts_grouped,
+                               n=n(),
+                               n_mouse=n_distinct(mouse),
+                               mean=mean(BA_counts),
+                               median = median(BA_counts),
+                               min=min(BA_counts),
+                               max=max(BA_counts),
+                               sd=sd(BA_counts))
+
+write_csv(ba_counts_summary,"./images3/2_ba_counts/1_ba_counts_rawdata_summary.csv")
+
+# Coefficient plot.
+coeff_plot_data = interval_data(ba_counts_fit)
+plot_intervals(coeff_plot_data)
+ggsave("./images3/2_ba_counts/2_ba_counts_modelfit_coefficientplot.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+# Summary of model fit.
+fit_summary = lazerhawk::brms_SummaryTable(ba_counts_fit,astrology=TRUE)
+write_csv(fit_summary,"./images3/2_ba_counts/2_ba_counts_modelfit_fitsummary.csv")
+
+comps = tukeys_mat(ba_counts,ba_counts_fit)
+write_csv(comps,"./images3/2_ba_counts/3_ba_counts_modelinference_pairwisecomp_table.csv")
+plot_contrasts(comps)
+ggsave("./images3/2_ba_counts/3_ba_counts_modelinference_pairwisecomp.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+
+
+
 
 # Evaluate model fit.
 summary(ba_counts_fit)
 
 plot(ba_counts_fit)
 
-pairs(ba_counts_fit)
-
-pp <- brms::pp_check(ba_counts_fit)
+stanplot(ba_counts_fit,pars = "^b_")
+?stanplot
+# PP plot
+pp <- brms::pp_check(ba_counts_fit,nsamples=10)
 pp + theme_bw()
 
-brms::marginal_effects(ba_counts_fit)
+# PP hist plot
+yrep_poisson <- posterior_predict(ba_counts_fit, draws = 500)
+ppc_hist(ba_counts$BA_counts, yrep_poisson[1:5, ],binwidth = 3)
+
+mean(ba_counts$BA_counts == 0)
+mean(yrep_poisson == 0)
+
+brms::marginal_effects(ba_counts_fit,cex=2)
+
+?marginal_effects
 
 ### Percentage of total sampled time spent in BA state.
 
@@ -104,8 +227,8 @@ ba_percentage <- filter(dataa,behavior=="BA") %>%
   separate(mouse,c("group","mouse"))
 
 # Change variable types.
-ba_totaltime$group <- as.factor(ba_totaltime$group)
-ba_totaltime$mouse <- as.factor(ba_totaltime$mouse)
+ba_percentage$group <- as.factor(ba_percentage$group)
+ba_percentage$mouse <- as.factor(ba_percentage$mouse)
 
 # Which priors can we specify for our model?
 get_prior(percentage_time_BA ~ group + (1|mouse), data=ba_percentage)
@@ -122,12 +245,57 @@ prior <- c(set_prior("student_t(3, 5, 10)", class = "b"),
 ba_totaltime_fit <- brm(percentage_time_BA ~ group + (1|mouse), 
                         data = ba_percentage, family = Beta, control = list(adapt_delta = 0.999,max_treedepth = 15))
 
+# Chart raw data boxplots.
+ggplot(ba_percentage, aes(x=group, y=percentage_time_BA)) + geom_boxplot(lwd=1.2)+
+  labs(x = NULL, y = "counts")+
+  theme_bw(base_size = 20)
+
+ggsave("./images3/3_ba_percentage/1_ba_counts_rawdata_boxplots.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+# Summary stats. 
+ba_percentage_grouped = group_by(ba_percentage,group)
+ba_percentage_summary = summarise(ba_percentage_grouped,
+                              n=n(),
+                              n_mouse=n_distinct(mouse),
+                              mean=mean(percentage_time_BA),
+                              median = median(percentage_time_BA),
+                              min=min(percentage_time_BA),
+                              max=max(percentage_time_BA),
+                              sd=sd(percentage_time_BA))
+
+write_csv(ba_percentage_summary,"./images3/3_ba_percentage/1_ba_percentage_rawdata_summary.csv")
+
+ba_percentage_fit = ba_totaltime_fit
+
+# Coefficient plot.
+coeff_plot_data = interval_data(ba_percentage_fit)
+plot_intervals(coeff_plot_data)
+ggsave("./images3/3_ba_percentage/2_ba_percentage_modelfit_coefficientplot.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
+# Summary of model fit.
+fit_summary = lazerhawk::brms_SummaryTable(ba_percentage_fit,astrology=TRUE)
+write_csv(fit_summary,"./images3/3_ba_percentage/2_ba_percentage_modelfit_fitsummary.csv")
+
+comps = tukeys_mat(ba_percentage,ba_totaltime_fit)
+comps[,2:5]=-1*comps[,2:5]
+
+write_csv(comps,"./images3/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp_table.csv")
+plot_contrasts(comps)
+ggsave("./images3/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp.png",
+       width = 10, height = 8, dpi = 300,device="png")
+
 # Evaluate model fit.
 summary(ba_totaltime_fit)
 
 plot(ba_totaltime_fit)
 
-pp = brms::pp_check(ba_totaltime_fit)
+stanplot(ba_totaltime_fit,pars = "^b_")
+
+?stanplot
+
+pp = brms::pp_check(ba_totaltime_fit,nsamples=10)
 pp + theme_bw()
 
 brms::marginal_effects(ba_totaltime_fit)
