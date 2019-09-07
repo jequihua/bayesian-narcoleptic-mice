@@ -82,21 +82,15 @@ summary(ba_seconds_fit)
 
 plot(ba_seconds_fit)
 
-p = stanplot(ba_seconds_fit,pars = "^b_")+ theme(text = element_text(size=20),line=element_line(size=20))
-
+# Predictive posterior checks.
 pp <- brms::pp_check(ba_seconds_fit,nsamples=10)
 pp + theme_bw()
 
-# PP hist plot
+# PP hist plot.
 y_simulated <- posterior_predict(ba_seconds_fit, draws = 500)
 ppc_hist(ba_seconds$seconds, y_simulated[1:11,], binwidth = 3)
 
-mean(ba_seconds_fit$ba_seconds == 0)
-mean(yrep_poisson == 0)
-
-brms::marginal_effects(ba_counts_fit,cex=2)
-
-
+# Conditional Predictions.
 brms::marginal_effects(ba_seconds_fit)
 
 ### Total number of BA (narcoleptic attacks) cases model per hour.
