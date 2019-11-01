@@ -5,6 +5,8 @@ library("ggplot2")
 library("brms")
 library("brmstools")
 library("bayesplot")
+library("emmeans")
+library("tidybayes")
 
 # Load misc. functions.
 source("./R/misc_functions.R")
@@ -25,7 +27,7 @@ get_prior(seconds ~ group + (1|mouse), data=ba_seconds)
 # Fit brms model for duration of each BA attack.
 ba_seconds_fit <- brm(seconds ~ group + (1|mouse), 
                       data = ba_seconds,
-                      family = lognormal(),
+                      family = gaussian,
                       control = list(adapt_delta = 0.999))
 
 summary(ba_seconds_fit)
@@ -33,7 +35,9 @@ summary(ba_seconds_fit)
 # Chart raw data boxplots.
 ggplot(ba_seconds, aes(x=group, y=seconds)) + geom_boxplot(lwd=1.2)+
 labs(x = NULL, y = "Seconds")+
-theme_bw(base_size = 20)
+ggtitle("Duration of each BA")+
+theme_bw(base_size = 40)+
+xlab("Groups")
  
 ggsave("./images4/1_ba_duration/1_ba_duration_rawdata_boxplots.png",
        width = 10, height = 8, dpi = 300,device="png")
@@ -62,17 +66,14 @@ fit_summary = lazerhawk::brms_SummaryTable(ba_seconds_fit,astrology=TRUE)
 write_csv(fit_summary,"./images4/1_ba_duration/2_ba_duration_modelfit_fitsummary.csv")
 
 # Contrasts 
-comps = tukeys_mat(ba_seconds,ba_seconds_fit)
-write_csv(comps,"./images4/1_ba_duration/3_ba_duration_modelinference_pairwisecomp_crudetable.csv")
-plot_contrasts(comps)
+credible_intervals_dat = credible_intervals_data(ba_seconds,ba_seconds_fit)
+
+write_csv(credible_intervals_dat,"./images4/1_ba_duration/3_ba_duration_modelinference_pairwisecomp_crudetable.csv")
+
+plot_contrasts(credible_intervals_dat,xlab="Effect size")
 ggsave("./images4/1_ba_duration/3_ba_duration_modelinference_pairwisecomp_crude.png",
        width = 10, height = 8, dpi = 300,device="png")
 
-compsp = tukeys_Pmat(ba_seconds,ba_seconds_fit)
-write_csv(compsp,"./images4/1_ba_duration/4_ba_duration_modelinference_pairwisecomp_table.csv")
-plot_contrasts(compsp,xlab="Effect size (%)")
-ggsave("./images4/1_ba_duration/4_ba_duration_modelinference_pairwisecomp_percentage.png",
-       width = 10, height = 8, dpi = 300,device="png")
 
 ##################################
 
@@ -126,7 +127,9 @@ ba_counts_fit <- brm(BA_counts ~ group + (1|mouse)+offset(log(hours)),
 # Chart raw data boxplots.
 ggplot(ba_counts, aes(x=group, y=BA_counts)) + geom_boxplot(lwd=1.2)+
   labs(x = NULL, y = "counts")+
-  theme_bw(base_size = 20)
+  ggtitle("BA counts")+
+  theme_bw(base_size = 40)+
+  xlab("Groups")
 
 ggsave("./images4/2_ba_counts/1_ba_counts_rawdata_boxplots.png",
        width = 10, height = 8, dpi = 300,device="png")
@@ -154,17 +157,11 @@ ggsave("./images4/2_ba_counts/2_ba_counts_modelfit_coefficientplot.png",
 fit_summary = lazerhawk::brms_SummaryTable(ba_counts_fit,astrology=TRUE)
 write_csv(fit_summary,"./images4/2_ba_counts/2_ba_counts_modelfit_fitsummary.csv")
 
-# Contrasts 
-comps = tukeys_mat(ba_counts,ba_counts_fit)
-write_csv(comps,"./images4/2_ba_counts/3_ba_counts_modelinference_pairwisecomp_crudetable.csv")
-plot_contrasts(comps)
-ggsave("./images4/1_ba_counts/3_ba_counts_modelinference_pairwisecomp_crude.png",
-       width = 10, height = 8, dpi = 300,device="png")
+credible_intervals_dat = credible_intervals_data_hours(ba_counts,ba_counts_fit)
+write_csv(credible_intervals_dat,"./images4/2_ba_counts/3_ba_counts_modelinference_pairwisecomp_crudetable.csv")
 
-compsp = tukeys_Pmat(ba_counts,ba_counts_fit)
-write_csv(compsp,"./images4/2_ba_counts/4_ba_counts_modelinference_pairwisecomp_table.csv")
-plot_contrasts(compsp, "Effect size (%)")
-ggsave("./images4/2_ba_counts/4_ba_counts_modelinference_pairwisecomp_percentage.png",
+plot_contrasts(credible_intervals_dat,xlab="Effect size")
+ggsave("./images4/2_ba_counts/3_ba_duration_modelinference_pairwisecomp_crude.png",
        width = 10, height = 8, dpi = 300,device="png")
 
 # Evaluate model fit.
@@ -224,8 +221,10 @@ ba_totaltime_fit <- brm(percentage_time_BA ~ group + (1|mouse),
 
 # Chart raw data boxplots.
 ggplot(ba_percentage, aes(x=group, y=percentage_time_BA)) + geom_boxplot(lwd=1.2)+
-  labs(x = NULL, y = "counts")+
-  theme_bw(base_size = 20)
+  labs(x = NULL, y = "% of time")+
+  ggtitle("% of time spent in BA")+
+  theme_bw(base_size = 40)+
+  xlab("Groups")
 
 ggsave("./images4/3_ba_percentage/1_ba_counts_rawdata_boxplots.png",
        width = 10, height = 8, dpi = 300,device="png")
@@ -256,16 +255,16 @@ fit_summary = lazerhawk::brms_SummaryTable(ba_percentage_fit,astrology=TRUE)
 write_csv(fit_summary,"./images4/3_ba_percentage/2_ba_percentage_modelfit_fitsummary.csv")
 
 # Contrasts 
-copms = tukeys_mat(ba_seconds,ba_seconds_fit)
-write_csv(comps,"./images4/3_ba_percentage/3_ba_duration_modelinference_pairwisecomp_crudetable.csv")
-plot_contrasts(comps)
-ggsave("./images4/3_ba_percentage/3_ba_duration_modelinference_pairwisecomp_crude.png",
-       width = 10, height = 8, dpi = 300,device="png")
+#copms = tukeys_mat(ba_seconds,ba_seconds_fit)
+#write_csv(comps,"./images4/3_ba_percentage/3_ba_duration_modelinference_pairwisecomp_crudetable.csv")
+#plot_contrasts(comps)
 
-compsp = tukeys_Pmat(ba_seconds,ba_seconds_fit)
-write_csv(compsp,"./images4/3_ba_percentage/4_ba_duration_modelinference_pairwisecomp_table.csv")
-plot_contrasts(compsp,xlab="Effect size (%)")
-ggsave("./images4/3_ba_percentage/4_ba_duration_modelinference_pairwisecomp_percentage.png",
+credible_intervals_dat = credible_intervals_data(ba_percentage,ba_percentage_fit)
+
+write_csv(credible_intervals_dat,"./images4/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp_crudetable.csv")
+
+plot_contrasts(credible_intervals_dat,xlab="Effect size")
+ggsave("./images4/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp_crude.png",
        width = 10, height = 8, dpi = 300,device="png")
 
 
@@ -286,9 +285,9 @@ plot(ba_totaltime_fit)
 
 stanplot(ba_totaltime_fit,pars = "^b_")
 
-?stanplot
 
 pp = brms::pp_check(ba_totaltime_fit,nsamples=10)
 pp + theme_bw()
 
 brms::marginal_effects(ba_totaltime_fit)
+
