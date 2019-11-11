@@ -122,7 +122,7 @@ credible_intervals_data = function(data,fit,untreated="NB",columns=1:3){
   treatments = treatments[treatments!=untreated]
   
   output = data.frame(matrix(0,length(treatments),8))
-  names(output)=c("term", "estimate", "conf.low", "conf.high","mean",
+  names(output)=c("term", "estimate", "conf.low", "conf.high","median",
                   "ctrl_estimate","treatment_estimate","reduction_percentage")
   
   for (i in 1:nrow(output)){
@@ -140,10 +140,10 @@ credible_intervals_data = function(data,fit,untreated="NB",columns=1:3){
     output[i,"estimate"]=quants[1]
     output[i,"conf.low"]=quants[2]
     output[i,"conf.high"]=quants[3]
-    output[i,"mean"]=mean(NB_vs_treatment)
-    output[i,"ctrl_estimate"]=mean(NB)
-    output[i,"treatment_estimate"]=mean(treat)
-    output[i,"reduction_percentage"]=output[i,"mean"]/output[i,"ctrl_estimate"]
+    output[i,"median"]=median(NB_vs_treatment)
+    output[i,"ctrl_estimate"]=median(NB)
+    output[i,"treatment_estimate"]=median(treat)
+    output[i,"reduction_percentage"]=output[i,"median"]/output[i,"ctrl_estimate"]
     
   }
   
@@ -161,7 +161,7 @@ credible_intervals_data_hours = function(data,fit,untreated="NB",columns=1:3){
   treatments = treatments[treatments!=untreated]
   
   output = data.frame(matrix(0,length(treatments),8))
-  names(output)=c("term", "estimate", "conf.low", "conf.high","mean",
+  names(output)=c("term", "estimate", "conf.low", "conf.high","median",
                   "ctrl_estimate","treatment_estimate","reduction_percentage")
   
   for (i in 1:nrow(output)){
@@ -179,10 +179,10 @@ credible_intervals_data_hours = function(data,fit,untreated="NB",columns=1:3){
     output[i,"estimate"]=quants[1]
     output[i,"conf.low"]=quants[2]
     output[i,"conf.high"]=quants[3]
-    output[i,"mean"]=mean(NB_vs_treatment)
-    output[i,"ctrl_estimate"]=mean(NB)
-    output[i,"treatment_estimate"]=mean(treat)
-    output[i,"reduction_percentage"]=output[i,"mean"]/output[i,"ctrl_estimate"]
+    output[i,"median"]=median(NB_vs_treatment)
+    output[i,"ctrl_estimate"]=median(NB)
+    output[i,"treatment_estimate"]=median(treat)
+    output[i,"reduction_percentage"]=output[i,"median"]/output[i,"ctrl_estimate"]
     
   }
   

@@ -51,7 +51,7 @@ ggplot(rem_counts, aes(x=group, y=totaltime)) + geom_boxplot(lwd=1.2)+
   xlab("Groups")
 
 ggsave("./images5/1_rem_Tseconds/1_rem_seconds_rawdata_boxplots.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary stats. 
 rem_counts_grouped = group_by(rem_counts,group)
@@ -70,7 +70,7 @@ summary(rem_counts_fit)
 coeff_plot_data = interval_data_eeg(rem_counts_fit)
 plot_intervals(coeff_plot_data)
 ggsave("./images5/1_rem_Tseconds/2_rem_seconds_coefficientplot.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 
 # Evaluate model fit.
@@ -129,7 +129,7 @@ ggplot(rem_counts, aes(x=group, y=totaltime)) + geom_boxplot(lwd=1.2)+
   xlab("Groups")
 
 ggsave("./images5/2_wake_Tseconds/1_wake_seconds_rawdata_boxplots.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary stats. 
 rem_counts_grouped = group_by(rem_counts,group)
@@ -148,7 +148,7 @@ summary(rem_counts_fit)
 coeff_plot_data = interval_data_eeg(rem_counts_fit)
 plot_intervals(coeff_plot_data)
 ggsave("./images5/2_wake_Tseconds/2_wake_seconds_coefficientplot.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 
 stanplot(rem_counts_fit,pars = "^b_")
@@ -207,7 +207,7 @@ View(rem_counts)
 # Chart raw data boxplots.
 ggplot(rem_counts, aes(x=group, y=totaltime)) + geom_boxplot(lwd=1.2)+
   labs(x = NULL, y = "Total seconds")+
-  ggtitle("NOREM")+
+  ggtitle("NREM")+
   theme_bw(base_size = 40)+
   xlab("Groups")
 

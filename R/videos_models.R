@@ -40,7 +40,7 @@ theme_bw(base_size = 40)+
 xlab("Groups")
  
 ggsave("./images4/1_ba_duration/1_ba_duration_rawdata_boxplots.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary stats. 
 ba_seconds_grouped = group_by(ba_seconds,group)
@@ -59,7 +59,7 @@ write_csv(ba_seconds_summary,"./images4/1_ba_duration/1_ba_duration_rawdata_summ
 coeff_plot_data = interval_data(ba_seconds_fit)
 plot_intervals(coeff_plot_data)
 ggsave("./images4/1_ba_duration/2_ba_duration_modelfit_coefficientplot.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary of model fit.
 fit_summary = lazerhawk::brms_SummaryTable(ba_seconds_fit,astrology=TRUE)
@@ -72,7 +72,7 @@ write_csv(credible_intervals_dat,"./images4/1_ba_duration/3_ba_duration_modelinf
 
 plot_contrasts(credible_intervals_dat,xlab="Effect size")
 ggsave("./images4/1_ba_duration/3_ba_duration_modelinference_pairwisecomp_crude.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 
 ##################################
@@ -132,7 +132,7 @@ ggplot(ba_counts, aes(x=group, y=BA_counts)) + geom_boxplot(lwd=1.2)+
   xlab("Groups")
 
 ggsave("./images4/2_ba_counts/1_ba_counts_rawdata_boxplots.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary stats. 
 ba_counts_grouped = group_by(ba_counts,group)
@@ -151,7 +151,7 @@ write_csv(ba_counts_summary,"./images4/2_ba_counts/1_ba_counts_rawdata_summary.c
 coeff_plot_data = interval_data(ba_counts_fit)
 plot_intervals(coeff_plot_data)
 ggsave("./images4/2_ba_counts/2_ba_counts_modelfit_coefficientplot.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary of model fit.
 fit_summary = lazerhawk::brms_SummaryTable(ba_counts_fit,astrology=TRUE)
@@ -162,7 +162,7 @@ write_csv(credible_intervals_dat,"./images4/2_ba_counts/3_ba_counts_modelinferen
 
 plot_contrasts(credible_intervals_dat,xlab="Effect size")
 ggsave("./images4/2_ba_counts/3_ba_duration_modelinference_pairwisecomp_crude.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Evaluate model fit.
 summary(ba_counts_fit)
@@ -227,7 +227,7 @@ ggplot(ba_percentage, aes(x=group, y=percentage_time_BA)) + geom_boxplot(lwd=1.2
   xlab("Groups")
 
 ggsave("./images4/3_ba_percentage/1_ba_counts_rawdata_boxplots.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary stats. 
 ba_percentage_grouped = group_by(ba_percentage,group)
@@ -248,7 +248,7 @@ ba_percentage_fit = ba_totaltime_fit
 coeff_plot_data = interval_data(ba_percentage_fit)
 plot_intervals(coeff_plot_data)
 ggsave("./images4/3_ba_percentage/2_ba_percentage_modelfit_coefficientplot.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Summary of model fit.
 fit_summary = lazerhawk::brms_SummaryTable(ba_percentage_fit,astrology=TRUE)
@@ -265,7 +265,7 @@ write_csv(credible_intervals_dat,"./images4/3_ba_percentage/3_ba_percentage_mode
 
 plot_contrasts(credible_intervals_dat,xlab="Effect size")
 ggsave("./images4/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp_crude.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 
 ###############################################################################################################3
@@ -276,7 +276,7 @@ comps[,2:5]=-1*comps[,2:5]
 write_csv(comps,"./images4/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp_table.csv")
 plot_contrasts(comps)
 ggsave("./images4/3_ba_percentage/3_ba_percentage_modelinference_pairwisecomp.png",
-       width = 10, height = 8, dpi = 300,device="png")
+       width = 10, height = 8, dpi = 500,device="png")
 
 # Evaluate model fit.
 summary(ba_totaltime_fit)
