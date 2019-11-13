@@ -27,10 +27,12 @@ get_prior(seconds ~ group + (1|mouse), data=ba_seconds)
 # Fit brms model for duration of each BA attack.
 ba_seconds_fit <- brm(seconds ~ group + (1|mouse), 
                       data = ba_seconds,
-                      family = gaussian,
+                      family = lognormal,
                       control = list(adapt_delta = 0.999))
 
 summary(ba_seconds_fit)
+
+plot(ba_seconds_fit)
 
 # Chart raw data boxplots.
 ggplot(ba_seconds, aes(x=group, y=seconds)) + geom_boxplot(lwd=1.2)+
@@ -87,7 +89,7 @@ summary(ba_seconds_fit)
 plot(ba_seconds_fit)
 
 # Predictive posterior checks.
-pp <- brms::pp_check(ba_seconds_fit,nsamples=10)
+pp <- brms::pp_check(ba_seconds_fit,nsamples=20)
 pp + theme_bw()
 
 # PP hist plot.
