@@ -51,7 +51,10 @@ ba_seconds_summary = summarise(ba_seconds_grouped,
                                median = median(seconds),
                                min=min(seconds),
                                max=max(seconds),
-                               sd=sd(seconds))
+                               sd=sd(seconds),
+                               Q0.25=quantile(seconds,0.25),
+                               Q0.75=quantile(seconds,0.75),
+                               IQR=IQR(seconds))
 
 write_csv(ba_seconds_summary,"./images4/1_ba_duration/1_ba_duration_rawdata_summary.csv")
 
@@ -120,7 +123,7 @@ ba_counts$mouse <- as.factor(ba_counts$mouse)
 get_prior(BA_counts ~ group + (1|mouse)+offset(log(hours)), data=ba_counts)
 
 # Fit brms model for absolute number of BA attacks per hour.            
-ba_counts_fit <- brm(BA_counts ~ group + (1|mouse)+offset(log(hours)), 
+ba_counts_fit <- brm(BA_counts ~ group + offset(log(hours)), 
                      data = ba_counts, family = poisson(), control = list(adapt_delta = 0.9999,max_treedepth=15))
 
 
@@ -143,7 +146,10 @@ ba_counts_summary = summarise(ba_counts_grouped,
                                median = median(BA_counts),
                                min=min(BA_counts),
                                max=max(BA_counts),
-                               sd=sd(BA_counts))
+                               sd=sd(BA_counts),
+                               Q0.25=quantile(BA_counts,0.25),
+                               Q0.75=quantile(BA_counts,0.75),
+                               IQR=IQR(BA_counts))
 
 write_csv(ba_counts_summary,"./images4/2_ba_counts/1_ba_counts_rawdata_summary.csv")
 
@@ -207,17 +213,11 @@ ba_percentage$mouse <- as.factor(ba_percentage$mouse)
 # Which priors can we specify for our model?
 get_prior(percentage_time_BA ~ group + (1|mouse), data=ba_percentage)
 
-prior <- c(set_prior("student_t(3, 5, 10)", class = "b"),
-           set_prior("normal(0,1)", class = "b", coef = "groupsham"),
-           set_prior("normal(0,1)", class = "b", coef = "grouptxcb"),
-           set_prior("normal(0,1)", class = "b", coef = "grouptxox"),
-           set_prior("student_t(3,0,  1)", class = "sd", 
-                     group = "mouse", coef = "Intercept"),
-           set_prior("student_t(3,0,  1)", class = "sd"))
-
 # Fit brms model for total time spent in BA state.
-ba_totaltime_fit <- brm(percentage_time_BA ~ group + (1|mouse), 
+ba_totaltime_fit <- brm(percentage_time_BA ~ group, 
                         data = ba_percentage, family = Beta, control = list(adapt_delta = 0.999,max_treedepth = 15))
+
+summary(ba_totaltime_fit)
 
 # Chart raw data boxplots.
 ggplot(ba_percentage, aes(x=group, y=percentage_time_BA)) + geom_boxplot(lwd=1.2)+
@@ -238,7 +238,10 @@ ba_percentage_summary = summarise(ba_percentage_grouped,
                               median = median(percentage_time_BA),
                               min=min(percentage_time_BA),
                               max=max(percentage_time_BA),
-                              sd=sd(percentage_time_BA))
+                              sd=sd(percentage_time_BA),
+                              Q0.25=quantile(percentage_time_BA,0.25),
+                              Q0.75=quantile(percentage_time_BA,0.75),
+                              IQR=IQR(percentage_time_BA))
 
 write_csv(ba_percentage_summary,"./images4/3_ba_percentage/1_ba_percentage_rawdata_summary.csv")
 

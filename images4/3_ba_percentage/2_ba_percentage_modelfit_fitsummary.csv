@@ -1,5 +1,5 @@
 Covariate,Estimate,Est.Error,l-95% CI,u-95% CI,Notable
-Intercept,-2.98,0.16,-3.33,-2.67,*
-groupsham,-0.28,0.24,-0.76,0.20,
-grouptxcb,-0.79,0.28,-1.36,-0.23,*
-grouptxox,-1.25,0.31,-1.85,-0.66,*
+Intercept,-2.97,0.14,-3.26,-2.70,*
+groupsham,-0.28,0.21,-0.70,0.14,
+grouptxcb,-0.78,0.26,-1.30,-0.27,*
+grouptxox,-1.25,0.28,-1.82,-0.71,*

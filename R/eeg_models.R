@@ -62,7 +62,10 @@ rem_counts_summary = summarise(rem_counts_grouped,
                                median = median(totaltime),
                                min=min(totaltime),
                                max=max(totaltime),
-                               sd=sd(totaltime))
+                               sd=sd(totaltime),
+                               Q0.25=quantile(totaltime,0.25),
+                               Q0.75=quantile(totaltime,0.75),
+                               IQR=IQR(totaltime))
 
 write_csv(rem_counts_summary,"./images5/1_rem_Tseconds/1_rem_seconds_rawdata_summary.csv")
 summary(rem_counts_fit)
@@ -140,7 +143,10 @@ rem_counts_summary = summarise(rem_counts_grouped,
                                median = median(totaltime),
                                min=min(totaltime),
                                max=max(totaltime),
-                               sd=sd(totaltime))
+                               sd=sd(totaltime),
+                               Q0.25=quantile(totaltime,0.25),
+                               Q0.75=quantile(totaltime,0.75),
+                               IQR=IQR(totaltime))
 
 write_csv(rem_counts_summary,"./images5/2_wake_Tseconds/1_wake_seconds_rawdata_summary.csv")
 summary(rem_counts_fit)
@@ -223,7 +229,13 @@ rem_counts_summary = summarise(rem_counts_grouped,
                                median = median(totaltime),
                                min=min(totaltime),
                                max=max(totaltime),
-                               sd=sd(totaltime))
+                               sd=sd(totaltime),
+                               Q0.25=quantile(totaltime,0.25),
+                               Q0.75=quantile(totaltime,0.75),
+                               IQR=IQR(totaltime),
+                               Q0.25=quantile(totaltime,0.25),
+                               Q0.75=quantile(totaltime,0.75),
+                               IQR=IQR(totaltime))
 
 write_csv(rem_counts_summary,"./images5/3_norem_Tseconds/1_norem_seconds_rawdata_summary.csv")
 summary(rem_counts_fit)
