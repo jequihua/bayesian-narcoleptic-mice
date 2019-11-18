@@ -1,19 +1,19 @@
 ---
 title: "Supplementary material - Orexin Cell transplant reduces behavioral arrest severity in
 narcoleptic mice."
-author: "Ana Clementina Equihua-BenÃ­tez, JuliÃ¡n A. Equihua-BenÃ­tez, Khalil GuzmÃ¡n-VÃ¡squez,
-Oscar Prospero-GarcÃ­a & RenÃ© Drucker-ColÃ­n."
+author: "Ana Clementina Equihua-Benítez, Julián A. Equihua-Benítez, Khalil Guzmán-Vásquez,
+Oscar Prospero-García & René Drucker-Colín."
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.align="center")
 ```
 
 # Introduction
 
 The differences in groups was analyzed using Bayesian multilevel models. These analyses were
-carried out using the R language (Team, 2018) by means of the brms package (BÃ¼rkner, 2017)
+carried out using the R language (Team, 2018) by means of the brms package (Burkner, 2017)
 which is a high level interface to the Stan probabilistic programming language (Carpenter et al.,2017).
 
 A total of six models were fitted for this purpose. Three (1-3) to analyze the treatment effects on
@@ -23,7 +23,7 @@ All models showed a good convergence and fit.
 
 1. A model fit to predict BA duration, with response distribution set to log-normal, with the
 variable group as the population-level parameter of interest and a varying-subject
-intercept, following the terminology of (BÃ¼rkner and Vuorre, 2019) .
+intercept, following the terminology of (Bürkner & Vuorre, 2019) .
 2. A model to predict the total number of BAs per sampled hour as the total sampled time
 varied slightly for each subject. Response distribution is set to Poisson, also with the
 variable group as the population-level parameter of interest. But as what is modeled are rates, we introduced a log(hours) offset.
@@ -51,7 +51,7 @@ library("bayesplot")
 library("emmeans")
 library("tidybayes")
 library("here")
-library("coda")
+library("ggmcmc")
 
 ```
 
@@ -80,18 +80,19 @@ ba_seconds <- filter(data,behavior=="BA")
 ba_seconds$group <- as.factor(ba_seconds$group)
 ba_seconds$mouse <- as.factor(ba_seconds$mouse)
 
-# Which priors can we specify for our model?
-get_prior(seconds ~ group + (1|mouse), data=ba_seconds)
-
 ```
 
 The default settings in the brms package for priors were used in all models. For the fitted models
 each group-level effect of the grouping factor has a standard deviation. By default ordinary
-regression coefficients have â€œimproper flatâ€ priors and the rest are restricted to be non-negative
-and have a half student-t prior (Gelman, 2006) with 3 degrees of freedom and a scale parameter
-that depends on the standard deviation of the response after applying the link function (BÃ¼rkner,
-2017) . These are equivalent to having no priors and weakly informative priors respectively. For
-example, for the BA duration model, 9 parameters need to be estimated.
+regression coefficients have improper flat priors and the rest are restricted to be non-negative
+and have a half Student's t-distribution prior (Gelman, 2006) with 3 degrees of freedom and a scale parameter that depends on the standard deviation of the response after applying the link function (Bürkner, 2017). These are equivalent to having no priors and weakly informative priors respectively. For example, for the BA duration model, 9 parameters need to be estimated.
+
+```{r message=FALSE, warning=FALSE}
+
+# Which priors can we specify for our model?
+get_prior(seconds ~ group + (1|mouse), data=ba_seconds)
+
+```
 
 We proceed to fit the model.
 
@@ -109,7 +110,7 @@ ba_seconds_fit <- brm(seconds ~ group + (1|mouse),
 
 No [runtime warnings](https://mc-stan.org/misc/warnings.html#runtime-warnings) during estimation were thrown which is a first indication of proper convergence.
 
-We perform a couploe of more checks. First we see if the trace plot exhibits convergence.
+We perform a couple of more checks. First we see if the trace plot exhibits convergence.
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -119,32 +120,40 @@ plot(ba_seconds_fit)
 
 The classical "furry caterpillars" can be seen which is an indication of no divergences.
 
-We then check the Geweke Diagnostic which shows the z-scores for a test of equality of means between the first and last parts of each chain, which should be in the interval [-1.96,1.96]. Scores above 1.96 or below -1.96 mean that the two portions of the chain significantly differ and full chain convergence was not obtained.
+We then check the Geweke Diagnostic (Geweke, 1992) which shows the Z-scores for a test of equality of means between the first and last parts of each chain (usually the first 10% and the last 50%). These should be in the interval [-1.96,1.96]. Scores above 1.96 or below -1.96 indicate that the two portions of the chain differ significantly and full chain convergence was not obtained (Lesaffre & Lawson, 2012).
 
 ```{r message=FALSE, warning=FALSE}
 
-modelposterior <- as.mcmc(ba_seconds_fit)
+mcmc_df = ggs(as.mcmc(ba_seconds_fit))
 
-geweke.plot(modelposterior)
+ggs_geweke(mcmc_df,frac1 = 0.1, frac2 = 0.5)
 
 ```
 
-We see that the Geweke diagnostic is acceptably inside the [-1.96,1.96] bands.
+Except for a small amount, the Z-values are within [-1.96,1.96], meaning that the burn-in and the total chain iterations were sufficient for convergence.
 
-We will now assess model fit by examining how well the model can reproduce the data at hand by means of (visual) posterior predictive checks.  
+Since we now have a data-informed data generating model, we can assess model fit by examining how well the model can reproduce (simulate) the data at hand. This is achieved by examining (visual) Posterior Predictive (PP) checks, which are vital for bayesian model evaluation (Gabry et al., 2019). 
 
 ```{r message=FALSE, warning=FALSE}
 
-# Predictive posterior checks.
+# Posterior Predictive checks.
+
+# PP kernel density plot (observed vs simulated values).
 pp <- brms::pp_check(ba_seconds_fit,nsamples=10)
 pp + theme_bw()
 
-y_simulated <- posterior_predict(ba_seconds_fit, draws = 500)
-ppc_hist(ba_seconds$seconds, y_simulated[1:11,], binwidth = 3)
+# PP histogram plot (observed vs simulated values).
+y_simulated <- posterior_predict(ba_seconds_fit, draws = 1000)
+ppc_hist(ba_seconds$seconds, y_simulated[1:11,], binwidth = 4)
+
+# PP frecuency polygons vs the observed median of each group.
+ppc_stat_freqpoly_grouped(ba_seconds$seconds, y_simulated, 
+                          group=ba_seconds$group, stat = "median",binwidth = 4)+
+                          coord_cartesian(xlim = c(10, 70))
 
 ```
 
-Fit seems adequate as density plots of observed and predicted values are similar.
+Fit seems adequate as densities and histograms of observed and predicted values are similar.
 
 Finally, we interpret our model results.
 
@@ -159,9 +168,9 @@ plot_intervals(coeff_plot_data)
 
 ```
 
-The first thing that must be noticed is that grouptxox estimate (effect) is negative as its 95%-CI does not touch 0. This indicates that, on average, the treatment credibly reduces the duration of BA episodes by some amount. 
+The first thing that must be noticed is that the grouptxox estimate is negative, its 95%-CI is all smaller than 0. This indicates that, on average, the treatment credibly reduces the duration of BA episodes by some amount. 
 
-And finally we calculate effect sizes.
+To estimate by what amount (effect size) we perform contrasts. To do this, we simply postprocess the completed MCMC chain and obtain the posterior distribution of the differences between the NB and each of the other groups, respectively. This is performed using the function credible_intervals_data described in the apendix.
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -172,5 +181,424 @@ credible_intervals_dat = credible_intervals_data(ba_seconds,ba_seconds_fit)
 plot_contrasts(credible_intervals_dat,xlab="Effect size")
 
 ```
+
+The discussion of these findings is presented in the manuscript.
+
+### Total number of BA cases model per hour.
+
+Data preparation.
+
+```{r message=FALSE, warning=FALSE}
+
+# Table available number of hours-data per mice.
+mice_totalhours <- group_by(data,mouse) %>%
+                   summarise(totaltime = sum(seconds)/3600)
+
+# Join data and mice_hours.
+dataa <- right_join(data,mice_totalhours,by="mouse")
+
+# Final data for model fit.
+ba_counts <- dataa %>% 
+             mutate(mouse=paste0(group," ",mouse)) %>%
+             group_by(mouse) %>%
+             summarise(BA_counts = sum(behavior == "BA"),hours=min(totaltime)) %>%
+             separate(mouse,c("group","mouse"))
+
+# Change variable types.
+ba_counts$group <- as.factor(ba_counts$group)
+ba_counts$mouse <- as.factor(ba_counts$mouse)
+
+```
+
+Model fit.
+
+```{r results='hide', message=FALSE, warning=FALSE}
+
+# Fit brms model for number of BA attacks per hour.            
+ba_counts_fit <- brm(BA_counts ~ group + offset(log(hours)), 
+                     data = ba_counts, family = poisson(), 
+                     control = list(adapt_delta = 0.9999,max_treedepth=15))
+
+```
+
+No [runtime warnings](https://mc-stan.org/misc/warnings.html#runtime-warnings) during estimation were thrown which is a first indication of proper convergence.
+
+We now perform further convergence checks. 
+
+First we see if the trace plot exhibits convergence.
+
+```{r message=FALSE, warning=FALSE}
+
+plot(ba_counts_fit)
+
+```
+
+Looks ok.
+
+Geweke Diagnostic.
+
+```{r message=FALSE, warning=FALSE}
+
+mcmc_df = ggs(as.mcmc(ba_counts_fit))
+
+ggs_geweke(mcmc_df,frac1 = 0.1, frac2 = 0.5)
+
+```
+
+Ok.
+
+We now perform Posterior Predictive checks.
+
+```{r message=FALSE, warning=FALSE}
+
+# Posterior Predictive checks.
+
+# PP kernel density plot (observed vs simulated values).
+pp <- brms::pp_check(ba_counts_fit,nsamples=10)
+pp + theme_bw()
+
+# PP histogram plot (observed vs simulated values).
+y_simulated <- posterior_predict(ba_counts_fit, draws = 1000)
+ppc_hist(ba_counts$BA_counts, y_simulated[1:11,], binwidth = 4)
+
+# PP frecuency polygons vs the observed median of each group.
+ppc_stat_freqpoly_grouped(ba_counts$BA_counts, y_simulated, 
+                          group=ba_counts$group, stat = "median", binwidth = 4)+
+                          coord_cartesian(xlim = c(0, 30))
+
+```
+
+Densities and histograms of observed and predicted values are acceptably similar.
+
+We proceed with model interpretation. First we produce the summary and coefficient plot for the model. 
+
+```{r message=FALSE, warning=FALSE}
+
+# Model summary.
+summary(ba_counts_fit)
+
+# Coefficient plot.
+coeff_plot_data = interval_data(ba_counts_fit)
+plot_intervals(coeff_plot_data)
+
+```
+
+It can be see that both the grouptxox and the grouptxcb estimates are negative (95%-CI's are smaller than 0). Indicating that those treatments credibly reduce the BA count per hour by some amount. 
+
+We perform contrasts to measure their effect sizes.
+
+```{r message=FALSE, warning=FALSE}
+
+# Contrasts.
+credible_intervals_dat = credible_intervals_data_hours(ba_counts,ba_counts_fit)
+
+# Plot contrasts.
+plot_contrasts(credible_intervals_dat,xlab="Effect size")
+
+```
+
+### Percentage of total time spent in a BA state.
+
+Data preparation.
+
+```{r message=FALSE, warning=FALSE}
+
+# Total hours of sampling by mouse.
+mice_totalseconds <- group_by(data,mouse) %>%
+  summarise(totaltime = sum(seconds))
+
+# Join data and mice_hours.
+dataa <- right_join(data,mice_totalseconds,by="mouse")
+
+# Final data for model fit.
+ba_percentage <- filter(dataa,behavior=="BA") %>%
+  mutate(mouse=paste0(group," ",mouse)) %>%
+  group_by(mouse) %>%
+  summarise(BA_totaltime = sum(seconds),hours=min(totaltime)) %>%
+  mutate(percentage_time_BA=(BA_totaltime/hours)) %>%
+  separate(mouse,c("group","mouse"))
+
+# Change variable types.
+ba_percentage$group <- as.factor(ba_percentage$group)
+ba_percentage$mouse <- as.factor(ba_percentage$mouse)
+
+
+
+```
+
+Model fit.
+
+```{r results='hide', message=FALSE, warning=FALSE}
+
+# Fit brms model for total time (%) spent in BA state.
+ba_totaltime_fit <- brm(percentage_time_BA ~ group , 
+                        data = ba_percentage, 
+                        family = Beta, 
+                        control = list(adapt_delta = 0.999,max_treedepth = 15))
+
+```
+
+No [runtime warnings](https://mc-stan.org/misc/warnings.html#runtime-warnings) during estimation were thrown which is a first indication of proper convergence.
+
+We now perform further convergence checks. 
+
+First we see if the trace plot exhibits convergence.
+
+```{r message=FALSE, warning=FALSE}
+
+plot(ba_totaltime_fit)
+
+```
+
+Looks ok.
+
+Geweke Diagnostic.
+
+```{r message=FALSE, warning=FALSE}
+
+mcmc_df = ggs(as.mcmc(ba_totaltime_fit))
+
+ggs_geweke(mcmc_df,frac1 = 0.1, frac2 = 0.5)
+
+```
+
+Ok.
+
+We now perform Posterior Predictive checks.
+
+```{r message=FALSE, warning=FALSE}
+
+# Posterior Predictive checks.
+
+# PP kernel density plot (observed vs simulated values).
+pp <- brms::pp_check(ba_totaltime_fit,nsamples=15)
+pp + theme_bw()
+
+# PP histogram plot (observed vs simulated values).
+y_simulated <- posterior_predict(ba_totaltime_fit, draws = 1000)
+ppc_hist(ba_percentage$percentage_time_BA, y_simulated[1:11,], binwidth = 0.02)
+
+# PP frecuency polygons vs the observed median of each group.
+ppc_stat_freqpoly_grouped(ba_percentage$percentage_time_BA, y_simulated, 
+                          group=ba_percentage$group, stat = "median", binwidth = 0.02)+
+                          coord_cartesian(xlim = c(-0.01, 0.1))
+
+```
+
+Densities and histograms of observed and predicted values are acceptably similar.
+
+We proceed with model interpretation. First we produce the summary and coefficient plot for the model. 
+
+```{r message=FALSE, warning=FALSE}
+
+# Model summary.
+summary(ba_counts_fit)
+
+# Coefficient plot.
+coeff_plot_data = interval_data(ba_totaltime_fit)
+plot_intervals(coeff_plot_data)
+
+```
+
+It can be see that both the grouptxox and the grouptxcb estimates are negative (95%-CI's are smaller than 0). Indicating that those treatments credibly reduce the BA count per hour by some amount. 
+
+We perform contrasts to measure their effect sizes.
+
+```{r message=FALSE, warning=FALSE}
+
+# Contrasts.
+credible_intervals_dat = credible_intervals_data_hours(ba_percentage,ba_totaltime_fit)
+
+# Plot contrasts.
+plot_contrasts(credible_intervals_dat,xlab="Effect size")
+
+```
+
+# Apendix (custom functions)
+
+
+```{r eval=FALSE}
+
+# Load packages.
+library("ggplot2")
+library("multcomp")
+library("broom")
+
+###########################################################################################
+# Function to create interval data for plotting.
+interval_data <- function(brms_model_fit,columns=1:4,
+                                        param_names=c("Intercept","sham","txcb","txox"),
+                                        prob=0.5,
+                                        prob_outer=0.95,
+                                        point_est="median"){
+  
+  post <- posterior_samples(brms_model_fit)[,columns]
+  colnames(post) <- param_names
+  interval_df <- mcmc_intervals_data(x=post,prob=prob,
+                                             prob_outer=prob_outer,
+                                             point_est=point_est)
+  return(interval_df)
+}
+
+###########################################################################################
+# Function to produce a coefficient plot (credible intervals).
+plot_intervals <- function(data, draw_points = TRUE,
+                           draw_ref_line = TRUE,
+                           line_position = 0){
+  
+  maybe_points <- if (draw_points) data else data[0, ]
+  geom_maybe_vline <- if (draw_ref_line) geom_vline else geom_ignore
+  
+  ggplot(data) + 
+    aes_(y = ~ parameter, yend = ~ parameter) +
+    geom_maybe_vline(xintercept = line_position, size = 2, color = "gray") +
+    geom_segment(aes_(x = ~ ll, xend = ~ hh), size = 3) + 
+    geom_point(aes_(x = ~ m), data = maybe_points, size = 8) + 
+    scale_y_discrete(limits = rev(data$parameter)) + 
+    labs(x = "Coefficient values", y = NULL)+
+    theme_bw(base_size = 40)
+}
+
+###########################################################################################  
+# Function to create data for contrasts between treatments.
+contrasts_data <- function(model_input_data
+                           ,brms_model_fit){
+  
+      posterior_data <- as.data.frame(fitted(brms_model_fit,
+                                             data.frame(group = levels(model_input_data$group)),
+                                             re_formula = NA,
+                                             summary = FALSE))
+      colnames(posterior_data) <- unique(model_input_data$group)
+      return(posterior_data)
+}
+
+###########################################################################################  
+# Function to create data for contrasts between treatments 
+# (hours variable, needs 1+ because of offset).
+contrasts_data_hours <- function(model_input_data,
+                                 brms_model_fit){
+  
+      posterior_data <- as.data.frame(fitted(brms_model_fit,
+                                             data.frame(group = levels(model_input_data$group)),
+                                             hours=rep(4,4), # assumes 4 hours of sampling
+                                             re_formula = NA,
+                                             summary = FALSE))
+      colnames(posterior_data) <- unique(model_input_data$group)
+      return(posterior_data)
+}
+
+########################################################################################### 
+# Create data for interval plots.
+credible_intervals_data <- function(data,fit,
+                                    untreated="NB",
+                                    columns=1:3){
+  
+  contrasts_dat <- contrasts_data(data[,columns],fit)
+  treatments <- as.character(unique(data$group))
+  treatments <- treatments[treatments!=untreated]
+  output <- data.frame(matrix(0,length(treatments),8))
+  names(output)=c("term", "estimate", "conf.low", "conf.high","median",
+                  "ctrl_estimate","treatment_estimate","reduction_percentage")
+  
+  for (i in 1:nrow(output)){
+    
+    treatment <- treatments[i]
+    output[i,"term"] <- paste0(treatment," - ",untreated)
+    
+    NB_vs_treatment <- contrasts_dat[,treatment]-contrasts_dat[,untreated]
+    
+    NB <- contrasts_dat[,untreated]
+    treat <-  contrasts_dat[,treatment]
+    
+    quants <- quantile(NB_vs_treatment, probs = c(.5, .025, .975))
+    
+    output[i,"estimate"] <- quants[1]
+    output[i,"conf.low"] <- quants[2]
+    output[i,"conf.high"] <- quants[3]
+    output[i,"median"] <- median(NB_vs_treatment)
+    output[i,"ctrl_estimate"] <- median(NB)
+    output[i,"treatment_estimate"] <- median(treat)
+    output[i,"reduction_percentage"] <- output[i,"median"]/output[i,"ctrl_estimate"]
+    
+  }
+  
+  output$term <- factor(output$term,levels=rev(output$term))
+  
+  return(output)
+}
+
+########################################################################################### 
+# Create data for interval plots 
+# (hours variable, needs 1+ because of offset).
+credible_intervals_data_hours <- function(data,fit,
+                                          untreated="NB",
+                                          columns=1:3){
+  
+  contrasts_dat <- contrasts_data_hours(data[,columns],fit)
+  treatments <- as.character(unique(data$group))
+  treatments <- treatments[treatments!=untreated]
+  output <- data.frame(matrix(0,length(treatments),8))
+  names(output) <- c("term", "estimate", "conf.low", "conf.high","median",
+                     "ctrl_estimate","treatment_estimate","reduction_percentage")
+  
+  for (i in 1:nrow(output)){
+    
+    treatment <- treatments[i]
+    output[i,"term"] <- paste0(treatment," - ",untreated)
+    
+    NB_vs_treatment <- contrasts_dat[,treatment]-contrasts_dat[,untreated]
+    
+    NB <- contrasts_dat[,untreated]
+    treat <- contrasts_dat[,treatment]
+    
+    quants <- quantile(NB_vs_treatment, probs = c(.5, .025, .975))
+    
+    output[i,"estimate"] <- quants[1]
+    output[i,"conf.low"] <- quants[2]
+    output[i,"conf.high"] <- quants[3]
+    output[i,"median"] <- median(NB_vs_treatment)
+    output[i,"ctrl_estimate"] <- median(NB)
+    output[i,"treatment_estimate"] <- median(treat)
+    output[i,"reduction_percentage"] <- output[i,"median"]/output[i,"ctrl_estimate"]
+    
+  }
+  
+  output$term <- factor(output$term,levels=rev(output$term))
+  
+  return(output)
+}
+
+########################################################################################### 
+# Plot pairwise comparisons (contrasts).
+plot_contrasts <- function(comps,
+                           xlab="Effect size"){
+  
+  ggplot(comps, aes(y = estimate, x = term)) + 
+    geom_pointrange(aes(ymin = conf.low,ymax = conf.high),size=2) +
+    geom_hline(yintercept = 0, size = 3, color = "gray") +
+    scale_y_continuous(xlab) + scale_x_discrete("") + coord_flip() +
+    theme_bw(base_size = 40)
+}
+###########################################################################################
+
+```
+
+
+# References
+
+Bürkner, P.-C., 2017. brms: An R Package for Bayesian Multilevel Models Using Stan. J. Stat. Softw. 80. https://doi.org/10.18637/jss.v080.i01 
+
+Bürkner, P.-C., Vuorre, M., 2019. Ordinal Regression Models in Psychology: A Tutorial. Adv. Methods Pract. Psychol. Sci. 2, 77-101. https://doi.org/10.1177/2515245918823199 
+
+Carpenter, B., Gelman, A., Hoffman, M.D., Lee, D., Goodrich, B., Betancourt, M., Brubaker, M., Guo, J., Li, P., Riddell, A., 2017. Stan: A Probabilistic Programming Language. J. Stat. Softw. 76. https://doi.org/10.18637/jss.v076.i01 
+
+Gabry, J. , Simpson, D. , Vehtari, A. , Betancourt, M. and Gelman, A., 2019. Visualization in Bayesian workflow. J. R. Stat. Soc. A, 182: 389-402. doi:10.1111/rssa.12378
+
+Gelman, A., 2006. Prior distributions for variance parameters in hierarchical models. Bayesian Anal. 1, 515-533.
+
+Geweke, J., 1992. Evaluating the Accuracy of Sampling-Based Approaches to Calculating Posterior Moments. In Bayesian Statistics 4 (ed JM Bernardo, JO Berger, AP Dawid, and AFM Smith). Clarendon Press, Oxford, UK.
+
+Lesaffre, E. and Lawson, A. B., 2012. Bayesian Biostatistics. New York: John Wiley & Sons, Ltd. 534 pages, ISBN 978-0-470-01823-1.
+
 
 

@@ -6,22 +6,7 @@ library("broom")
 ###########################################################################################
 # Function to create interval data for plotting.
 interval_data = function(brms_model_fit,columns=1:4,
-                                        param_names=c("Intercept","sham","txcb","txox"),
-                                        prob=0.5,
-                                        prob_outer=0.95,
-                                        point_est="median"){
-  post = posterior_samples(brms_model_fit)[,columns]
-  colnames(post)=param_names
-  interval_df = mcmc_intervals_data(x=post,prob=prob,
-                                             prob_outer=prob_outer,
-                                             point_est=point_est)
-  return(interval_df)
-}
-
-###########################################################################################
-# Function to create interval data for plotting.
-interval_data_eeg = function(brms_model_fit,columns=1:5,
-                         param_names=c("Intercept","NB","sham","txcb","txox"),
+                         param_names=c("Intercept","sham","txcb","txox"),
                          prob=0.5,
                          prob_outer=0.95,
                          point_est="median"){
@@ -34,9 +19,24 @@ interval_data_eeg = function(brms_model_fit,columns=1:5,
 }
 
 ###########################################################################################
+# Function to create interval data for plotting.
+interval_data_eeg = function(brms_model_fit,columns=1:5,
+                             param_names=c("Intercept","NB","sham","txcb","txox"),
+                             prob=0.5,
+                             prob_outer=0.95,
+                             point_est="median"){
+  post = posterior_samples(brms_model_fit)[,columns]
+  colnames(post)=param_names
+  interval_df = mcmc_intervals_data(x=post,prob=prob,
+                                    prob_outer=prob_outer,
+                                    point_est=point_est)
+  return(interval_df)
+}
+
+###########################################################################################
 # Function to produce a coefficient plot (credible intervals).
 plot_intervals <- function(data, draw_points = TRUE, draw_ref_line = TRUE,
-                           line_position = 0) {
+                           line_position = 0, base_size = 10) {
   
   maybe_points <- if (draw_points) data else data[0, ]
   
@@ -50,18 +50,18 @@ plot_intervals <- function(data, draw_points = TRUE, draw_ref_line = TRUE,
     geom_point(aes_(x = ~ m), data = maybe_points, size = 8) + 
     scale_y_discrete(limits = rev(data$parameter)) + 
     labs(x = "Coefficient values", y = NULL)+
-    theme_bw(base_size = 40)
+    theme_bw(base_size = 10)
 }
 
 ###########################################################################################  
 # Function to create data for contrasts between treatments (using "posterior_predict" or "fitted").
 contrasts_data = function(model_input_data,brms_model_fit){
-      posterior_data = as.data.frame(fitted(
-      brms_model_fit,
-      newdata = data.frame(group = levels(model_input_data$group)),
-      re_formula = NA,
-      summary = FALSE # extract the full MCMC)
-    ))
+  posterior_data = as.data.frame(fitted(
+    brms_model_fit,
+    newdata = data.frame(group = levels(model_input_data$group)),
+    re_formula = NA,
+    summary = FALSE # extract the full MCMC)
+  ))
   
   colnames(posterior_data) = unique(model_input_data$group)
   return(posterior_data)
@@ -79,38 +79,6 @@ contrasts_data_hours = function(model_input_data,brms_model_fit){
   
   colnames(posterior_data) = unique(model_input_data$group)
   return(posterior_data)
-}
-
-########################################################################################### 
-# Create a Tukeys percentage contrast matrix.
-tukeys_Pmat = function(model_input_data,brms_model_fit,columns=1:4,estimate.method="median"){
-  mcmc = brms_model_fit
-  coefs <- as.matrix(mcmc)[, columns]
-  newdata <- data.frame(x = levels(model_input_data$group))
-  tuk.mat <- contrMat(n = table(newdata$x), type = "Tukey")
-  Xmat <- model.matrix(~x, data = newdata)
-  pairwise.mat <- tuk.mat %*% Xmat
-  tuk.mat[tuk.mat == -1] = 0
-  comp.mat <- tuk.mat %*% Xmat
-  comp.mcmc = 100 * (coefs %*% t(pairwise.mat))/coefs %*% t(comp.mat)
-  (comps = broom::tidyMCMC(comp.mcmc, conf.int = TRUE, conf.method = "HPDinterval"))
-  comps$term = factor(comps$term, levels = rev(unique(comps$term)))
-  return(comps)
-}
-
-########################################################################################### 
-# Create a Tukeys contrast matrix.
-tukeys_mat = function(model_input_data,brms_model_fit,columns=1:4,estimate.method="median"){
-  mcmc <- brms_model_fit
-  coefs <- as.matrix(mcmc)[, columns]
-  newdata <- data.frame(x = levels(model_input_data$group))
-  tuk.mat <- contrMat(n = table(newdata$x), type = "Tukey")
-  Xmat <- model.matrix(~x, data = newdata)
-  pairwise.mat <- tuk.mat %*% Xmat
-  mcmc_areas(coefs %*% t(pairwise.mat))
-  (comps = broom::tidyMCMC(coefs %*% t(pairwise.mat), conf.int = TRUE, conf.method = "HPDinterval",estimate.method=estimate.method))
-  comps$term = factor(comps$term, levels = rev(unique(comps$term)))
-  return(comps)
 }
 
 ########################################################################################### 
@@ -193,18 +161,11 @@ credible_intervals_data_hours = function(data,fit,untreated="NB",columns=1:3){
 
 ########################################################################################### 
 # Plot pairwise comparisons (contrasts).
-plot_contrasts = function(comps,xlab="Effect size"){
+plot_contrasts = function(comps,xlab="Effect size",base_size = 10){
   ggplot(comps, aes(y = estimate, x = term)) + 
     geom_pointrange(aes(ymin = conf.low,ymax = conf.high),size=2) +
     geom_hline(yintercept = 0, size = 3, color = "gray") +
     scale_y_continuous(xlab) + scale_x_discrete("") + coord_flip() +
-    theme_bw(base_size = 40)
+    theme_bw(base_size = base_size)
 }
-
-
-
-
-
-
-
 

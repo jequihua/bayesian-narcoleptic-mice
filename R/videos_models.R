@@ -7,6 +7,8 @@ library("brmstools")
 library("bayesplot")
 library("emmeans")
 library("tidybayes")
+library("ggmcmc")
+library("coda")
 
 # Load misc. functions.
 source("./R/misc_functions.R")
@@ -32,7 +34,17 @@ ba_seconds_fit <- brm(seconds ~ group + (1|mouse),
 
 summary(ba_seconds_fit)
 
+mcmc_df = ggs(as.mcmc(ba_seconds_fit))
+ggs_geweke(mcmc_df,frac1 = 0.2, frac2 = 0.6)
+
+?ggs_geweke
+
 plot(ba_seconds_fit)
+
+modelposterior <- as.mcmc(ba_seconds_fit)
+
+geweke.plot(modelposterior)
+
 
 # Chart raw data boxplots.
 ggplot(ba_seconds, aes(x=group, y=seconds)) + geom_boxplot(lwd=1.2)+
@@ -94,7 +106,19 @@ pp + theme_bw()
 
 # PP hist plot.
 y_simulated <- posterior_predict(ba_seconds_fit, draws = 500)
-ppc_hist(ba_seconds$seconds, y_simulated[1:11,], binwidth = 3)
+ppc_hist(ba_seconds$seconds, y_simulated[1:11,], binwidth = 4)
+
+ppc_stat_freqpoly_grouped(ba_seconds$seconds, y_simulated, 
+                          group=ba_seconds$group, stat = "median",
+                          binwidth = 4,freq=FALSE)+
+                          coord_cartesian(xlim = c(10, 70))
+
+head(ba_seconds)
+
+ba_seconds%>%
+  add_residual_draws(ba_seconds_fit) %>%
+  ggplot(aes(x = .row, y = .residual)) +
+  stat_pointinterval()
 
 # Conditional Predictions.
 brms::marginal_effects(ba_seconds_fit)
@@ -122,12 +146,19 @@ ba_counts$group <- as.factor(ba_counts$group)
 ba_counts$mouse <- as.factor(ba_counts$mouse)
 
 # Which priors can we specify for our model?
-get_prior(BA_counts ~ group + (1|mouse)+offset(log(hours)), data=ba_counts)
+get_prior(BA_counts ~ group + (1|mouse) + offset(log(hours)), data=ba_counts)
 
-# Fit brms model for absolute number of BA attacks per hour.            
+# Fit brms model for number of BA attacks per hour.            
 ba_counts_fit <- brm(BA_counts ~ group + offset(log(hours)), 
-                     data = ba_counts, family = poisson(), control = list(adapt_delta = 0.9999,max_treedepth=15))
+                     data = ba_counts, family = poisson(), 
+                     control = list(adapt_delta = 0.9999,max_treedepth=15))
 
+
+head(ba_counts)
+
+posterior_data = contrasts_data(ba_counts,ba_counts_fit)
+
+head(posterior_data)
 
 # Chart raw data boxplots.
 ggplot(ba_counts, aes(x=group, y=BA_counts)) + geom_boxplot(lwd=1.2)+
@@ -155,15 +186,21 @@ ba_counts_summary = summarise(ba_counts_grouped,
 
 write_csv(ba_counts_summary,"./images4/2_ba_counts/1_ba_counts_rawdata_summary.csv")
 
+summary(ba_counts_fit)
+
 # Coefficient plot.
 coeff_plot_data = interval_data(ba_counts_fit)
 plot_intervals(coeff_plot_data)
+
+
 ggsave("./images4/2_ba_counts/2_ba_counts_modelfit_coefficientplot.png",
        width = 10, height = 8, dpi = 500,device="png")
 
 # Summary of model fit.
 fit_summary = lazerhawk::brms_SummaryTable(ba_counts_fit,astrology=TRUE)
 write_csv(fit_summary,"./images4/2_ba_counts/2_ba_counts_modelfit_fitsummary.csv")
+
+head(ba_counts)
 
 credible_intervals_dat = credible_intervals_data_hours(ba_counts,ba_counts_fit)
 write_csv(credible_intervals_dat,"./images4/2_ba_counts/3_ba_counts_modelinference_pairwisecomp_crudetable.csv")
@@ -180,12 +217,25 @@ plot(ba_counts_fit)
 stanplot(ba_counts_fit,pars = "^b_")
 
 # PP plot
-pp <- brms::pp_check(ba_counts_fit,nsamples=10)
+pp <- brms::pp_check(ba_counts_fit,nsamples=15)
 pp + theme_bw()
 
 # PP hist plot
-yrep_poisson <- posterior_predict(ba_counts_fit, draws = 500)
-ppc_hist(ba_counts$BA_counts, yrep_poisson[1:5, ],binwidth = 3)
+yrep_poisson <- posterior_predict(ba_counts_fit, draws = 1000)
+ppc_hist(ba_counts$BA_counts, yrep_poisson[1:11, ],binwidth = 4)
+
+# PP histogram plot (observed vs simulated values).
+y_simulated <- posterior_predict(ba_counts_fit, draws = 1000)
+ppc_hist(ba_counts$BA_counts, y_simulated[1:11,], binwidth = 4)
+
+# PP frecuency polygons vs the observed median of each group.
+ppc_stat_freqpoly_grouped(ba_counts$BA_counts, y_simulated, 
+                          group=ba_counts$group, stat = "median", binwidth = 4)+
+  coord_cartesian(xlim = c(0, 30))
+
+
+
+
 
 mean(ba_counts$BA_counts == 0)
 mean(yrep_poisson == 0)
@@ -216,8 +266,10 @@ ba_percentage$mouse <- as.factor(ba_percentage$mouse)
 get_prior(percentage_time_BA ~ group + (1|mouse), data=ba_percentage)
 
 # Fit brms model for total time spent in BA state.
-ba_totaltime_fit <- brm(percentage_time_BA ~ group, 
-                        data = ba_percentage, family = Beta, control = list(adapt_delta = 0.999,max_treedepth = 15))
+ba_totaltime_fit <- brm(percentage_time_BA ~ group , 
+                        data = ba_percentage, 
+                        family = Beta, 
+                        control = list(adapt_delta = 0.999,max_treedepth = 15))
 
 summary(ba_totaltime_fit)
 
@@ -291,8 +343,18 @@ plot(ba_totaltime_fit)
 stanplot(ba_totaltime_fit,pars = "^b_")
 
 
-pp = brms::pp_check(ba_totaltime_fit,nsamples=10)
+pp = brms::pp_check(ba_totaltime_fit,nsamples=15)
 pp + theme_bw()
+
+# PP histogram plot (observed vs simulated values).
+y_simulated <- posterior_predict(ba_totaltime_fit, draws = 500)
+ppc_hist(ba_percentage$percentage_time_BA, y_simulated[1:11,], binwidth = 0.02)
+
+# PP frecuency polygons vs the observed median of each group.
+ppc_stat_freqpoly_grouped(ba_percentage$percentage_time_BA, y_simulated, 
+                          group=ba_percentage$group, stat = "median", binwidth = 0.02)+
+                          coord_cartesian(xlim = c(-0.01, 0.1))
+
 
 brms::marginal_effects(ba_totaltime_fit)
 
